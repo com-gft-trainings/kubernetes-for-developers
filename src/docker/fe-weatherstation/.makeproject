@@ -1,0 +1,12 @@
+CUSTOMER ?= com.gft.trainings
+PROJECT ?= $(CUSTOMER).kubernetes-for-developers
+GIT_HOST ?= github.com
+MODULE ?= frontend
+COMPONENT ?= fe-weatherstation
+
+export CUSTOMER
+export PROJECT
+export MODULE
+export COMPONENT
+export GIT_HOST
+

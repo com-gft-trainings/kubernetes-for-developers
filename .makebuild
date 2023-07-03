@@ -1,0 +1,27 @@
+PATH_BASE      ?= .
+BUILD_DIR ?= build
+BIN_DIR   ?= $(BUILD_DIR)/bin
+OBJ_DIR   ?= $(BUILD_DIR)/obj
+DOWNLOAD_DIR ?= downloaded
+
+ls: _ls
+clean: _clean
+
+_ls:
+	@$(ECHO) "### $(MAKELEVEL) /LS    $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@$(LS) -l $(BIN_DIR)/$(TARGET) 2>/dev/null || exit 0
+	@($(LS) -l "$(DOCKER_IID)" 2>/dev/null && cat "$(DOCKER_IID)" && $(ECHO) ) ; exit 0
+
+_clean:
+	@$(ECHO) "### GOM /CLEAN $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@$(RM) -rf $(BIN_DIR)/$(TARGET) $(OBJ_DIR)
+	@$(MKDIR) $(BIN_DIR) $(OBJ_DIR)
+
+_buildinfo:
+	@$(ECHO) "### $(MAKELEVEL) /INFO  $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@$(ECHO) "CUSTOMER       '$(CUSTOMER)'" 
+	@$(ECHO) "PROJECT        '$(PROJECT)'" 
+	@$(ECHO) "COMPONENT      '$(COMPONENT)'" 
+	@$(ECHO) "MODULE         '$(MODULE)'" 
+	@$(ECHO) "TIMESTAMP      '$(TIMESTAMP)'" 
+	@$(ECHO) "GITHASH        '$(GITHASH)'" 

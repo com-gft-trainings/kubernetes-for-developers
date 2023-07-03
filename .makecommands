@@ -1,0 +1,25 @@
+CAT ?= cat
+CD ?= cd
+CP ?= cp -pv
+CURL ?= curl --fail
+DOCKER ?= docker
+ECHO ?= echo
+KUBECTL ?= kubectl
+LN ?= ln
+LS ?= ls
+MAKE ?= make
+MKDIR ?= mkdir -p
+MV ?= mv
+PRINTF ?= printf
+RM ?= rm
+SED ?= sed
+TAR ?= tar
+TOUCH ?= touch
+WGET ?= wget
+
+GOCMD=go
+GOBUILD=$(GOCMD) build
+GOCLEAN=$(GOCMD) clean
+GOGET=$(GOCMD) get
+GOMOD=$(GOCMD) mod
+GOTEST=$(GOCMD) test

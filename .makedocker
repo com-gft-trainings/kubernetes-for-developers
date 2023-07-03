@@ -1,0 +1,117 @@
+DOCKER_DIR        ?= $(BUILD_DIR)/docker
+DOCKER_VARIANT    ?= alpine
+DOCKER_SUFFIX     ?= base
+DOCKER_IID_BASE   ?= $(TARGET)-$(DOCKER_SUFFIX)-$(DOCKER_VARIANT)
+DOCKER_IID        ?= $(DOCKER_DIR)/$(DOCKER_IID_BASE).iid
+DOCKER_LOCAL_IID  ?= $(DOCKER_DIR)/$(DOCKER_IID_BASE)-local.iid
+DOCKER_IMAGE      ?= $(TARGET):$(DOCKER_SUFFIX)
+DOCKER_FILE       ?= Dockerfile-$(DOCKER_VARIANT)
+DOCKER_LOCAL_FILE ?= Dockerfile-$(DOCKER_VARIANT)-local
+DOCKER_SRCDIR     ?= .
+DOCKER_BUILDDIR   ?= .
+
+docker-ls: _docker-ls
+docker-ls-all: _docker-ls-all
+docker-clean: _docker-clean
+docker-distclean: _docker-clean-all
+docker: _dockerinfo
+
+_dockerinfo: 
+	@$(ECHO) "### $(MAKELEVEL) /DOCKERINFO    $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@$(ECHO) "DOCKER_DIR     '$(DOCKER_DIR)'"
+	@$(ECHO) "DOCKER_VARIANT '$(DOCKER_VARIANT)'"
+	@$(ECHO) "DOCKER_SUFFIX  '$(DOCKER_SUFFIX)'"
+	@$(ECHO) "DOCKER_IID     '$(DOCKER_IID)'"
+	@$(ECHO) "DOCKER_IMAGE   '$(DOCKER_IMAGE)'"
+	@$(ECHO) "DOCKER_FILE    '$(DOCKER_FILE)'"
+
+_docker-ls-all:
+	@$(ECHO) "### $(MAKELEVEL) /DOCKERLSALL    $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@while read id state name image ; do \
+		$(PRINTF) 'C %-7s %-10s %-20s %s\n' "$$id" "$$state" "$$name" "$$image" ; \
+	done < <( $(DOCKER) container ls -a --filter "label=PROJECT=$(PROJECT)"  --format='{{.ID}} {{.State}} {{.Names}} {{.Image}}'  | sort ) ;
+	@while read img imgname ; do \
+	 	$(PRINTF) "I $$img $$imgname" ; \
+		while read id state name image ; do \
+			$(PRINTF) ' %-7s(%s)\n' "$$id" "$$state" ; \
+		done < <( $(DOCKER) container ls -a --filter "ancestor=$$img" --format='{{.ID}} {{.State}} {{.Names}} {{.Image}}'  | sort ) ; \
+		$(ECHO) ; \
+	done < <($(DOCKER) image ls --filter "label=PROJECT=$(PROJECT)" --format='{{.ID}} {{.Repository}}:{{.Tag}}' | sort -k 2)
+
+_docker-ls:
+	@$(ECHO) "### $(MAKELEVEL) /DOCKERLS    $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@while read img imgname ; do \
+		while read id state name image ; do \
+			$(PRINTF) 'C %-7s %-10s %-20s %s\n' "$$id" "$$state" "$$name" "$$image" ; \
+		done < <( $(DOCKER) container ls --filter "ancestor=$$img" --format='{{.ID}} {{.State}} {{.Names}} {{.Image}}'  | sort ) ; \
+		$(ECHO) "I $$img $$imgname" ; \
+	done < <($(DOCKER) image ls --filter "label=PROJECT=$(PROJECT)" --filter "label=COMPONENT=$(COMPONENT)" --filter "label=MODULE=$(MODULE)" --filter "label=CUSTOMER=$(CUSTOMER)" --format='{{.ID}} {{.Repository}}:{{.Tag}}'  | sort -k 2)
+
+_docker-clean:
+	@$(ECHO) "### $(MAKELEVEL) /DOCKERCLEAN    $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@while read img imgname ; do \
+		while read id state name image ; do \
+			$(PRINTF) 'C %-7s %-10s %-20s %s\n' "$$id" "$$state" "$$name" "$$image" ; \
+			$(DOCKER) container stop --time 5 "$$id" ; \
+		done < <( $(DOCKER) container ls --filter "ancestor=$$img" --format='{{.ID}} {{.State}} {{.Names}} {{.Image}}'  | sort ) ; \
+		$(ECHO) "I $$img $$imgname" ; \
+		$(DOCKER) image rm -f $$img ; \
+	done < <($(DOCKER) image ls --filter "label=PROJECT=$(PROJECT)" --filter "label=COMPONENT=$(COMPONENT)" --filter "label=MODULE=$(MODULE)" --filter "label=CUSTOMER=$(CUSTOMER)" --format='{{.ID}} {{.Repository}}:{{.Tag}}' | sort -k 2)
+	@while read f ; do \
+	    i=$$(cat "$$f") ; \
+		$(DOCKER) image rm -f $$i 2>/dev/null ; \
+		$(RM) -f "$$f"  2>/dev/null ; \
+	done < <( find "$(DOCKER_DIR)" -name "*.iid" -type f)
+
+
+_docker-clean-all:
+	@$(ECHO) "### $(MAKELEVEL) /DOCKERCLEANALL    $(PROJECT).$(MODULE).$(COMPONENT) - $(DOCKER_VARIANT)"
+	@while read id state name image ; do \
+		$(PRINTF) 'C %-7s %-10s %-20s %s\n' "$$id" "$$state" "$$name" "$$image" ; \
+		docker container stop "$$id" 2>/dev/null ; \
+		docker container rm "$$id" 2>/dev/null ; \
+	done < <( $(DOCKER) container ls -a --filter "label=PROJECT=$(PROJECT)"  --format='{{.ID}} {{.State}} {{.Names}} {{.Image}}'  | sort ) ;
+	@while read img imgname ; do \
+	 	$(PRINTF) "I $$img $$imgname" ; \
+		while read id state name image ; do \
+			$(PRINTF) ' %-7s(%s)\n' "$$id" "$$state" ; \
+			docker container stop "$$id" 2>/dev/null ; \
+			docker container rm "$$id" 2>/dev/null ; \
+		done < <( $(DOCKER) container ls -a --filter "ancestor=$$img" --format='{{.ID}} {{.State}} {{.Names}} {{.Image}}'  | sort ) ; \
+ 	  docker image rm "$$img" 2>/dev/null ; \
+		$(ECHO) ; \
+	done < <($(DOCKER) image ls --filter "label=PROJECT=$(PROJECT)" --format='{{.ID}} {{.Repository}}:{{.Tag}}' | sort -k 2)
+	@while read f ; do \
+	    i=$$(cat "$$f") ; \
+		$(DOCKER) image rm -f $$i 2>/dev/null ; \
+		$(RM) -f "$$f"  2>/dev/null ; \
+	done < <( find "$(DOCKER_DIR)" -name "*.iid" -type f)
+
+# $(DOCKER_IID): _dockerinfo $(DOCKER_FILE) \
+# 	                             $(SRCS) \
+# 	                             Makefile
+
+.PHONY: _dockerinfo _buildinfo _docker-ls-all _docker-ls _docker-clean _docker-clean-all
+
+# $(DOCKER_DIR)/$(TARGET)-%-$(DOCKER_VARIANT).iid: Makefile $(DOCKER_FILE) $(SRCS)
+$(DOCKER_IID): Makefile $(DOCKER_FILE) $(SRCS)
+	@if [ -f "$(DOCKER_IID)" ] ; then i=$$( cat "$(DOCKER_IID)" ); $(DOCKER) image rm -f $$i ; rm -f "$(DOCKER_IID)"  2>/dev/null ; fi
+	@$(MKDIR) "$(DOCKER_DIR)" 
+	@$(DOCKER) image build -f "./$(DOCKER_FILE)" --no-cache \
+	  --progress=plain \
+	  --build-arg GITHASH="$(_GITHASH)" \
+	  --build-arg "COMPONENT=$(COMPONENT)" \
+	  --build-arg "MODULE=$(MODULE)" \
+	  --build-arg "PROJECT=$(PROJECT)" \
+	  --build-arg "CUSTOMER=$(CUSTOMER)" \
+	  --build-arg "BUILDDIR=$(DOCKER_BUILDDIR)" \
+	  --tag "$(DOCKER_IMAGE)" \
+	  --label GITHASH="$(_GITHASH)" \
+	  --label "COMPONENT=$(COMPONENT)" \
+	  --label "MODULE=$(MODULE)" \
+	  --label "PROJECT=$(PROJECT)" \
+	  --label "CUSTOMER=$(CUSTOMER)" \
+	  --label "IS_LOCAL=$(DOCKER_IS_LOCAL)" \
+	  --iidfile "$(DOCKER_IID)" \
+	 "$(DOCKER_SRCDIR)" 
+
